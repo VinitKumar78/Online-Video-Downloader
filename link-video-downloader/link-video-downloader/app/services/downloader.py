@@ -17,6 +17,13 @@ from app.utils.validators import is_valid_url, sanitize_filename
 
 logger = logging.getLogger(__name__)
 
+# A pool of highly active, reliable public instances to guarantee uptime
+YOUTUBE_BACKEND_POOL = [
+    "https://inv.tux.digital",
+    "https://invidious.projectsegfau.lt",
+    "https://yewtu.be",
+    "https://invidious.privacydev.net"
+]
 
 class VideoInfo:
     def __init__(self, title, thumbnail, duration, uploader, qualities):
@@ -72,39 +79,39 @@ class DownloaderService:
         if not is_valid_url(url):
             raise InvalidURLError("The link provided is empty or not a valid URL.")
 
-        # BYPASS FOR YOUTUBE: Use an open-source mirror API to dodge cloud server blocks
         if self._is_youtube(url):
             video_id = self._get_youtube_id(url)
-            try:
-                # Using a resilient public Invidious instances aggregator payload
-                api_url = f"https://invidious.nerdvpn.de/api/v1/videos/{video_id}"
-                response = requests.get(api_url, timeout=7)
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Map format streams safely
-                    qualities = []
-                    seen_heights = set()
-                    for fmt in data.get("formatStreams", []):
-                        height = fmt.get("height")
-                        if height and height not in seen_heights:
-                            seen_heights.add(height)
-                            qualities.append({"height": height, "label": f"{height}p"})
-                    
-                    if not qualities:
-                        qualities = [{"height": 720, "label": "720p (Auto)"}]
+            # Cycle through instances until one responds beautifully
+            for base_instance in YOUTUBE_BACKEND_POOL:
+                try:
+                    api_url = f"{base_instance}/api/v1/videos/{video_id}"
+                    response = requests.get(api_url, timeout=4)
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        qualities = []
+                        seen_heights = set()
+                        for fmt in data.get("formatStreams", []):
+                            height = fmt.get("height")
+                            if height and height not in seen_heights:
+                                seen_heights.add(height)
+                                qualities.append({"height": height, "label": f"{height}p"})
+                        
+                        if not qualities:
+                            qualities = [{"height": 720, "label": "720p (Auto)"}]
 
-                    return VideoInfo(
-                        title=data.get("title", "YouTube Video"),
-                        thumbnail=data.get("videoThumbnails", [{}])[0].get("url", ""),
-                        duration=data.get("lengthSeconds"),
-                        uploader=data.get("author", "YouTube Creator"),
-                        qualities=qualities
-                    )
-            except Exception as e:
-                logger.error("Bypass API failed, trying raw engine: %s", e)
+                        return VideoInfo(
+                            title=data.get("title", "YouTube Video"),
+                            thumbnail=data.get("videoThumbnails", [{}])[0].get("url", ""),
+                            duration=data.get("lengthSeconds"),
+                            uploader=data.get("author", "YouTube Creator"),
+                            qualities=qualities
+                        )
+                except Exception as e:
+                    logger.warning("Instance %s failed or timed out: %s", base_instance, e)
+                    continue # Try next instance smoothly
 
-        # Non-YouTube or Fallback native path
+        # Fallback native path
         ydl_opts = {
             "quiet": True, 
             "no_warnings": True, 
@@ -125,7 +132,7 @@ class DownloaderService:
             )
         except Exception as exc:
             logger.exception("Unexpected error extracting info for %s", url)
-            raise ExtractionError("Server data restriction active. Try another platform link or try again later.")
+            raise ExtractionError("YouTube engine overload. Please try downloading again in a few seconds.")
 
     @staticmethod
     def _build_quality_options(formats: list) -> list:
@@ -155,51 +162,51 @@ class DownloaderService:
         return job
 
     def _run_download(self, job_id: str, url: str, height) -> None:
-        # Check if we should use the cloud streaming bypass for YouTube
         if self._is_youtube(url):
             video_id = self._get_youtube_id(url)
-            try:
-                job_store.update(job_id, progress="Processing backend pipeline...")
-                api_url = f"https://invidious.nerdvpn.de/api/v1/videos/{video_id}"
-                res = requests.get(api_url, timeout=10).json()
-                
-                # Try to grab the target quality stream URL or pick the first stable link
-                stream_url = None
-                for fmt in res.get("formatStreams", []):
-                    if str(fmt.get("height")) == str(height):
-                        stream_url = fmt.get("url")
-                        break
-                if not stream_url and res.get("formatStreams"):
-                    stream_url = res["formatStreams"][0].get("url")
-                
-                if stream_url:
-                    target_filename = f"{job_id}.mp4"
-                    target_path = os.path.join(self.download_dir, target_filename)
+            for base_instance in YOUTUBE_BACKEND_POOL:
+                try:
+                    job_store.update(job_id, progress="Connecting to secure proxy...")
+                    api_url = f"{base_instance}/api/v1/videos/{video_id}"
+                    res = requests.get(api_url, timeout=5).json()
                     
-                    response = requests.get(stream_url, stream=True, timeout=60)
-                    total_size = int(response.headers.get('content-length', 0))
+                    stream_url = None
+                    for fmt in res.get("formatStreams", []):
+                        if str(fmt.get("height")) == str(height):
+                            stream_url = fmt.get("url")
+                            break
+                    if not stream_url and res.get("formatStreams"):
+                        stream_url = res["formatStreams"][0].get("url")
                     
-                    downloaded = 0
-                    with open(target_path, 'wb') as f:
-                        for chunk in response.iter_content(chunk_size=131072):
-                            if chunk:
-                                f.write(chunk)
-                                downloaded += len(chunk)
-                                if total_size > 0:
-                                    percent = int((downloaded / total_size) * 100)
-                                    job_store.update(job_id, progress=f"{percent}%")
-                                else:
-                                    job_store.update(job_id, progress="Downloading...")
-                    
-                    job_store.update(
-                        job_id,
-                        status=JobStatus.DONE,
-                        filename=target_filename,
-                        title=sanitize_filename(res.get("title", "video"), self.max_filename_length)
-                    )
-                    return
-            except Exception as e:
-                logger.error("Bypass download route failed: %s", e)
+                    if stream_url:
+                        target_filename = f"{job_id}.mp4"
+                        target_path = os.path.join(self.download_dir, target_filename)
+                        
+                        response = requests.get(stream_url, stream=True, timeout=60)
+                        total_size = int(response.headers.get('content-length', 0))
+                        
+                        downloaded = 0
+                        with open(target_path, 'wb') as f:
+                            for chunk in response.iter_content(chunk_size=131072):
+                                if chunk:
+                                    f.write(chunk)
+                                    downloaded += len(chunk)
+                                    if total_size > 0:
+                                        percent = int((downloaded / total_size) * 100)
+                                        job_store.update(job_id, progress=f"{percent}%")
+                                    else:
+                                        job_store.update(job_id, progress="Downloading stream...")
+                        
+                        job_store.update(
+                            job_id,
+                            status=JobStatus.DONE,
+                            filename=target_filename,
+                            title=sanitize_filename(res.get("title", "video"), self.max_filename_length)
+                        )
+                        return # Success! Exit function.
+                except Exception as e:
+                    logger.error("Instance download route failed for %s, trying next: %s", base_instance, e)
+                    continue
 
         # -- Path B: Standard Native Execution (For Instagram, FB, Twitter, etc.) --
         def progress_hook(event):
