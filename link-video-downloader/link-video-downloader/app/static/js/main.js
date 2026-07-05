@@ -42,47 +42,64 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         resultTitle.innerText = data.title || "Target File Container";
         resultUploader.innerText = data.uploader || "Direct Download Link";
         
-        // DYNAMIC HANDSHAKE TRIGGER OVERRIDE
         downloadBtn.onclick = async () => {
-            if (url.includes("diskwala.com")) {
-                downloadBtn.innerText = "Downloading...";
+            // CLIENT-SIDE CLOUD REDIRECTION BYPASS HOOK
+            if (data.is_cloud_platform === true) {
+                downloadBtn.innerText = "Streaming Video Asset Directly...";
                 downloadBtn.disabled = true;
 
-                // Extract the exact file ID string safely using JS path splits
-                const urlParts = url.split("/app/");
-                let fileId = urlParts[urlParts.length - 1];
-                if (fileId && fileId.includes("?")) {
-                    fileId = fileId.split("?")[0];
-                }
-                
-                if (!fileId) {
-                    alert("Could not parse a valid file ID from this URL.");
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerText = "Start Secure Download";
-                    return;
+                const publicBypassApis = [
+                    "https://api.cobalt.tools/api/json",
+                    "https://co.wuk.sh/api/json",
+                    "https://cobalt.api.v0.pw/api/json"
+                ];
+
+                let downloadTriggered = false;
+
+                for (const baseApi of publicBypassApis) {
+                    try {
+                        const payload = { url: url, vQuality: "720" };
+                        const cdnResponse = await fetch(baseApi, {
+                            method: "POST",
+                            headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (cdnResponse.ok) {
+                            const cdnData = await cdnResponse.json();
+                            const finalStreamUrl = cdnData.url;
+                            
+                            if (finalStreamUrl) {
+                                // Inject hidden sandboxed iframe to trigger user's native home browser context download
+                                let hiddenFrame = document.getElementById('silent-download-frame');
+                                if (!hiddenFrame) {
+                                    hiddenFrame = document.createElement('iframe');
+                                    hiddenFrame.id = 'silent-download-frame';
+                                    hiddenFrame.style.display = 'none';
+                                    document.body.appendChild(hiddenFrame);
+                                }
+                                hiddenFrame.src = finalStreamUrl;
+                                downloadTriggered = true;
+                                break;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`Fallback stream path shifted for segment: ${baseApi}`);
+                    }
                 }
 
-                // Point directly to Diskwala's download API route
-                const directCdnUrl = `https://www.diskwala.com/api/v1/file/download/${fileId}`;
-                
-                // Create an invisible iframe to download the stream silently inside the browser sandbox
-                let hiddenFrame = document.getElementById('silent-download-frame');
-                if (!hiddenFrame) {
-                    hiddenFrame = document.createElement('iframe');
-                    hiddenFrame.id = 'silent-download-frame';
-                    hiddenFrame.style.display = 'none';
-                    document.body.appendChild(hiddenFrame);
+                if (!downloadTriggered) {
+                    // Fallback to direct anchor window if tracking layers fail
+                    window.open(`https://co.wuk.sh/?url=${encodeURIComponent(url)}`, '_blank');
                 }
-                
-                // Load the direct download target inside the hidden frame
-                hiddenFrame.src = directCdnUrl;
 
                 setTimeout(() => {
                     downloadBtn.disabled = false;
                     downloadBtn.innerText = "Start Secure Download";
-                }, 4000);
+                }, 3000);
+
             } else {
-                // Standard server-side queue worker for streaming media platforms (YouTube, Instagram)
+                // Keep default localized server-side caching if processing on home network loop
                 downloadBtn.disabled = true;
                 downloadBtn.innerText = "Initializing Download Job...";
                 
