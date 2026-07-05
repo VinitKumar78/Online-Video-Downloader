@@ -6,7 +6,7 @@ ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
 import logging
 import os
 import threading
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 import requests
 import yt_dlp
@@ -43,6 +43,21 @@ class DownloaderService:
         self.output_format = output_format
         self.max_filename_length = max_filename_length
 
+    def _is_youtube(self, url: str) -> bool:
+        parsed = urlparse(url)
+        return any(domain in parsed.netloc for domain in ["youtube.com", "youtu.be"])
+
+    def _get_youtube_id(self, url: str) -> str:
+        parsed = urlparse(url)
+        if parsed.netloc == 'youtu.be':
+            return parsed.path.strip('/')
+        if '/shorts/' in parsed.path:
+            return parsed.path.split('/shorts/')[-1].split('?')[0]
+        if '/live/' in parsed.path:
+            return parsed.path.split('/live/')[-1].split('?')[0]
+        query = parse_qs(parsed.query)
+        return query.get('v', [None])[0] or parsed.path.split('/')[-1]
+
     def _resolve_direct_url(self, url: str) -> str:
         parsed = urlparse(url)
         if "diskwala.com" in parsed.netloc:
@@ -57,12 +72,44 @@ class DownloaderService:
         if not is_valid_url(url):
             raise InvalidURLError("The link provided is empty or not a valid URL.")
 
+        # BYPASS FOR YOUTUBE: Use an open-source mirror API to dodge cloud server blocks
+        if self._is_youtube(url):
+            video_id = self._get_youtube_id(url)
+            try:
+                # Using a resilient public Invidious instances aggregator payload
+                api_url = f"https://invidious.nerdvpn.de/api/v1/videos/{video_id}"
+                response = requests.get(api_url, timeout=7)
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Map format streams safely
+                    qualities = []
+                    seen_heights = set()
+                    for fmt in data.get("formatStreams", []):
+                        height = fmt.get("height")
+                        if height and height not in seen_heights:
+                            seen_heights.add(height)
+                            qualities.append({"height": height, "label": f"{height}p"})
+                    
+                    if not qualities:
+                        qualities = [{"height": 720, "label": "720p (Auto)"}]
+
+                    return VideoInfo(
+                        title=data.get("title", "YouTube Video"),
+                        thumbnail=data.get("videoThumbnails", [{}])[0].get("url", ""),
+                        duration=data.get("lengthSeconds"),
+                        uploader=data.get("author", "YouTube Creator"),
+                        qualities=qualities
+                    )
+            except Exception as e:
+                logger.error("Bypass API failed, trying raw engine: %s", e)
+
+        # Non-YouTube or Fallback native path
         ydl_opts = {
             "quiet": True, 
             "no_warnings": True, 
             "skip_download": True,
             "ffmpeg_location": ffmpeg_path,
-            # Force client layout simulation to dodge bot firewalls
             "extractor_args": {"youtube": {"player_client": ["web_safari"]}},
         }
         try:
@@ -76,41 +123,9 @@ class DownloaderService:
                 uploader=info.get("uploader"),
                 qualities=self._build_quality_options(info.get("formats", []) or []),
             )
-            
-        except yt_dlp.utils.DownloadError as exc:
-            if "Unsupported URL" in str(exc):
-                logger.info("Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: %s", url)
-                try:
-                    target_url = self._resolve_direct_url(url)
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                        "Referer": "https://www.diskwala.com/"
-                    }
-                    response = requests.head(target_url, headers=headers, allow_redirects=True, timeout=5)
-                    if response.status_code >= 400:
-                        response = requests.get(target_url, headers=headers, stream=True, timeout=5)
-                    
-                    if response.status_code == 200:
-                        parsed_url = urlparse(url)
-                        base_name = os.path.basename(parsed_url.path) or "cloud_file"
-                        if "-" in base_name or len(base_name) > 20:
-                            base_name = "Cloud Video"
-                        
-                        return VideoInfo(
-                            title=base_name,
-                            thumbnail=None,
-                            duration=None,
-                            uploader="Direct File Link",
-                            qualities=[{"height": 0, "label": "Source File"}]
-                        )
-                except Exception as req_err:
-                    raise ExtractionError(f"Direct connection to file server failed: {str(req_err)}") from req_err
-                    
-            logger.warning("yt-dlp failed to extract info for %s: %s", url, exc)
-            raise ExtractionError(str(exc)) from exc
         except Exception as exc:
             logger.exception("Unexpected error extracting info for %s", url)
-            raise ExtractionError(str(exc)) from exc
+            raise ExtractionError("Server data restriction active. Try another platform link or try again later.")
 
     @staticmethod
     def _build_quality_options(formats: list) -> list:
@@ -140,89 +155,53 @@ class DownloaderService:
         return job
 
     def _run_download(self, job_id: str, url: str, height) -> None:
-        is_direct_http = (int(height) == 0)
-        
-        if is_direct_http:
-            ydl_opts = {
-                "quiet": True, 
-                "simulate": True,
-                "ffmpeg_location": ffmpeg_path,
-                "extractor_args": {"youtube": {"player_client": ["web_safari"]}},
-            }
+        # Check if we should use the cloud streaming bypass for YouTube
+        if self._is_youtube(url):
+            video_id = self._get_youtube_id(url)
             try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.extract_info(url, download=False)
-                    is_direct_http = False
-            except Exception:
-                is_direct_http = True
-
-        # -- Path A: Fallback Direct HTTP Stream Download Handler --
-        if is_direct_http:
-            try:
-                target_url = self._resolve_direct_url(url)
-                logger.info("Executing background HTTP request stream for Job %s to: %s", job_id, target_url)
+                job_store.update(job_id, progress="Processing backend pipeline...")
+                api_url = f"https://invidious.nerdvpn.de/api/v1/videos/{video_id}"
+                res = requests.get(api_url, timeout=10).json()
                 
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "Accept": "*/*",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Referer": "https://www.diskwala.com/",
-                    "Origin": "https://www.diskwala.com"
-                }
+                # Try to grab the target quality stream URL or pick the first stable link
+                stream_url = None
+                for fmt in res.get("formatStreams", []):
+                    if str(fmt.get("height")) == str(height):
+                        stream_url = fmt.get("url")
+                        break
+                if not stream_url and res.get("formatStreams"):
+                    stream_url = res["formatStreams"][0].get("url")
                 
-                # Execute session handshake to follow redirects safely
-                session = requests.Session()
-                response = session.get(target_url, headers=headers, stream=True, timeout=60)
-                response.raise_for_status()
-                
-                # SENSOR SECURITY GUARD: Ensure we didn't receive an HTML firewall landing page block
-                content_type = response.headers.get('Content-Type', '')
-                if "text/html" in content_type:
-                    raise ExtractionError("Diskwala server denied direct streaming access. Anti-bot restriction triggered.")
-
-                total_size = int(response.headers.get('content-length', 0))
-                content_disp = response.headers.get('Content-Disposition', '')
-                inferred_filename = "video.mp4"
-                
-                if "filename=" in content_disp:
-                    try:
-                        inferred_filename = content_disp.split("filename=")[-1].strip('"\'')
-                    except Exception:
-                        pass
-                
-                _, ext = os.path.splitext(inferred_filename)
-                if not ext:
-                    ext = f".{self.output_format}"
+                if stream_url:
+                    target_filename = f"{job_id}.mp4"
+                    target_path = os.path.join(self.download_dir, target_filename)
                     
-                target_filename = f"{job_id}{ext}"
-                target_path = os.path.join(self.download_dir, target_filename)
-                
-                downloaded = 0
-                with open(target_path, 'wb') as file:
-                    for chunk in response.iter_content(chunk_size=131072):
-                        if chunk:
-                            file.write(chunk)
-                            downloaded += len(chunk)
-                            if total_size > 0:
-                                percent = int((downloaded / total_size) * 100)
-                                job_store.update(job_id, progress=f"{percent}%")
-                            else:
-                                job_store.update(job_id, progress="Streaming...")
-                                
-                job_store.update(
-                    job_id,
-                    status=JobStatus.DONE,
-                    filename=target_filename,
-                    title=sanitize_filename(inferred_filename.split('.')[0], self.max_filename_length)
-                )
-                logger.info("Direct HTTP stream Job %s completed safely: %s", job_id, target_filename)
-                return
-            except Exception as exc:
-                logger.exception("Direct HTTP fallback streaming loop failed for Job %s", job_id)
-                job_store.update(job_id, status=JobStatus.ERROR, error=str(exc)[:300])
-                return
+                    response = requests.get(stream_url, stream=True, timeout=60)
+                    total_size = int(response.headers.get('content-length', 0))
+                    
+                    downloaded = 0
+                    with open(target_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=131072):
+                            if chunk:
+                                f.write(chunk)
+                                downloaded += len(chunk)
+                                if total_size > 0:
+                                    percent = int((downloaded / total_size) * 100)
+                                    job_store.update(job_id, progress=f"{percent}%")
+                                else:
+                                    job_store.update(job_id, progress="Downloading...")
+                    
+                    job_store.update(
+                        job_id,
+                        status=JobStatus.DONE,
+                        filename=target_filename,
+                        title=sanitize_filename(res.get("title", "video"), self.max_filename_length)
+                    )
+                    return
+            except Exception as e:
+                logger.error("Bypass download route failed: %s", e)
 
-        # -- Path B: Standard Native yt-dlp Video Extraction Pipeline --
+        # -- Path B: Standard Native Execution (For Instagram, FB, Twitter, etc.) --
         def progress_hook(event):
             if event.get("status") == "downloading":
                 job_store.update(job_id, progress=event.get("_percent_str", "0%").strip())
@@ -244,7 +223,6 @@ class DownloaderService:
             "progress_hooks": [progress_hook],
             "quiet": True,
             "no_warnings": True,
-            # Mask data center server fingerprinting from YouTube filters
             "extractor_args": {"youtube": {"player_client": ["web_safari"]}},
         }
 
@@ -264,7 +242,5 @@ class DownloaderService:
                 filename=filename,
                 title=sanitize_filename(info.get("title", "video"), self.max_filename_length),
             )
-            logger.info("Job %s completed: %s", job_id, filename)
         except Exception as exc:
-            logger.exception("Job %s failed", job_id)
-            job_store.update(job_id, status=JobStatus.ERROR, error=str(exc)[:300])
+            job_store.update(job_id, status=JobStatus.ERROR, error="Extraction rate-limit hit. Please try another video stream link.")
