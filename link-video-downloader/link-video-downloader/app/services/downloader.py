@@ -45,9 +45,11 @@ class DownloaderService:
         self.output_format = output_format
         self.max_filename_length = max_filename_length
 
-    def _is_youtube(self, url: str) -> bool:
+    def _should_bypass_on_cloud(self, url: str) -> bool:
+        """Identify if the target link belongs to a platform heavily blocked on cloud datacenters."""
         parsed = urlparse(url)
-        return any(domain in parsed.netloc for domain in ["youtube.com", "youtu.be"])
+        domain = parsed.netloc.lower()
+        return any(x in domain for x in ["youtube.com", "youtu.be", "instagram.com"])
 
     # -- Metadata -------------------------------------------------------
 
@@ -55,18 +57,21 @@ class DownloaderService:
         if not is_valid_url(url):
             raise InvalidURLError("The link provided is empty or not a valid URL.")
 
-        # If running on Render and accessing YouTube, pass to client bypass instantly
-        if self._is_youtube(url):
+        # Trigger client-side bypass instantly for datacenter-restricted social networks
+        if self._should_bypass_on_cloud(url):
+            parsed_domain = urlparse(url).netloc.lower()
+            platform_name = "Instagram Story/Media" if "instagram" in parsed_domain else "YouTube Video/Shorts"
+            
             return VideoInfo(
-                title="YouTube Video/Shorts Stream",
+                title=f"{platform_name} Stream",
                 thumbnail=None,
                 duration=None,
-                uploader="YouTube Engine",
+                uploader="Media Core Engine",
                 qualities=[{"height": 720, "label": "720p (High Quality)"}],
                 is_cloud_platform=True
             )
 
-        # Fallback local/native layout processing for non-YouTube links
+        # Local/native fallback processing configuration for other standard links
         ydl_opts = {
             "quiet": True, 
             "no_warnings": True, 
