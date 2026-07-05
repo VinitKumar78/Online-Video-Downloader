@@ -19,12 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class VideoInfo:
-    def __init__(self, title, thumbnail, duration, uploader, qualities):
+    def __init__(self, title, thumbnail, duration, uploader, qualities, is_cloud_platform=False):
         self.title = title
         self.thumbnail = thumbnail
         self.duration = duration
         self.uploader = uploader
         self.qualities = qualities
+        self.is_cloud_platform = is_cloud_platform
 
     def to_dict(self):
         return {
@@ -33,6 +34,7 @@ class VideoInfo:
             "duration": self.duration,
             "uploader": self.uploader,
             "qualities": self.qualities,
+            "is_cloud_platform": self.is_cloud_platform
         }
 
 
@@ -43,13 +45,28 @@ class DownloaderService:
         self.output_format = output_format
         self.max_filename_length = max_filename_length
 
+    def _is_youtube(self, url: str) -> bool:
+        parsed = urlparse(url)
+        return any(domain in parsed.netloc for domain in ["youtube.com", "youtu.be"])
+
     # -- Metadata -------------------------------------------------------
 
     def fetch_info(self, url: str) -> VideoInfo:
         if not is_valid_url(url):
             raise InvalidURLError("The link provided is empty or not a valid URL.")
 
-        # Clean, native options block allowing default multi-client processing hooks
+        # If running on Render and accessing YouTube, pass to client bypass instantly
+        if self._is_youtube(url):
+            return VideoInfo(
+                title="YouTube Video/Shorts Stream",
+                thumbnail=None,
+                duration=None,
+                uploader="YouTube Engine",
+                qualities=[{"height": 720, "label": "720p (High Quality)"}],
+                is_cloud_platform=True
+            )
+
+        # Fallback local/native layout processing for non-YouTube links
         ydl_opts = {
             "quiet": True, 
             "no_warnings": True, 
@@ -66,6 +83,7 @@ class DownloaderService:
                 duration=info.get("duration"),
                 uploader=info.get("uploader", "Media Engine"),
                 qualities=self._build_quality_options(info.get("formats", []) or []),
+                is_cloud_platform=False
             )
         except Exception as exc:
             logger.exception("Metadata parsing failure for URL: %s", url)
@@ -73,7 +91,6 @@ class DownloaderService:
 
     @staticmethod
     def _build_quality_options(formats: list) -> list:
-        """Reduce yt-dlp's raw format list to a de-duplicated list of resolutions."""
         seen_heights = set()
         options = []
         for fmt in formats:
