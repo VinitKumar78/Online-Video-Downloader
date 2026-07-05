@@ -17,11 +17,11 @@ from app.utils.validators import is_valid_url, sanitize_filename
 
 logger = logging.getLogger(__name__)
 
-# Distributed pool of public Cobalt API instances for high-availability YouTube extraction
+# Aligned pool explicitly targeting the required /api/json endpoint processing path
 COBALT_API_POOL = [
-    "https://api.cobalt.tools",
-    "https://co.wuk.sh",
-    "https://cobalt.api.v0.pw"
+    "https://api.cobalt.tools/api/json",
+    "https://co.wuk.sh/api/json",
+    "https://cobalt.api.v0.pw/api/json"
 ]
 
 class VideoInfo:
@@ -70,7 +70,7 @@ class DownloaderService:
         if self._is_youtube(url):
             for base_api in COBALT_API_POOL:
                 try:
-                    # Updated Cobalt v7 parameter mapping (vQuality instead of videoQuality)
+                    # Updated Cobalt modern payload parameters
                     payload = {
                         "url": url,
                         "vQuality": "720"
