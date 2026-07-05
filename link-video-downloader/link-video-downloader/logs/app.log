@@ -1,0 +1,184 @@
+[2026-07-05 12:21:22,645] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 12:21:22,645] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 12:21:23,062] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 12:21:23,063] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 14:44:01,095] INFO in cleanup: Removed expired file: .gitkeep (age=8615s)
+[2026-07-05 15:23:24,293] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:23:24,293] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:23:24,588] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:23:24,589] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:23:40,213] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:23:40,213] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:23:40,511] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:23:40,511] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:24:47,371] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:24:47,371] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:24:47,663] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:24:47,663] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:31:48,320] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:31:48,320] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:31:48,639] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:31:48,639] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:35:24,768] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:35:24,768] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:35:25,060] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:35:25,060] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:42:14,528] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:42:14,529] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:42:14,815] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:42:14,816] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:44:43,058] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:44:43,058] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:44:43,339] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:44:43,339] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:49:04,416] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:49:04,417] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:49:04,703] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:49:04,703] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:52:03,595] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:52:03,596] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 15:52:04,355] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 15:52:04,355] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:04:28,107] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:04:28,108] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:04:28,672] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:04:28,672] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:06:41,971] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:06:41,972] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:06:42,749] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:06:42,749] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:08:07,648] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:08:07,648] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:08:08,222] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:08:08,223] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:15:00,823] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:15:00,823] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:15:01,363] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:15:01,364] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:15:25,607] WARNING in downloader: yt-dlp failed to extract info for https://www.diskwala.com/app/6a45f4a269eabf872035f7f2: [0;31mERROR:[0m Unsupported URL: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:20:42,432] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:20:42,432] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:20:43,253] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:20:43,254] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:21:10,492] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:21:14,946] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:21:23,614] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:21:26,406] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:21:29,032] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:21:41,549] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:25:19,897] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:25:19,898] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:25:20,674] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:25:20,675] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:25:44,128] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:25:51,087] INFO in downloader: Executing background HTTP request stream for Job 9e0fb311a1564a80b3e94fa93adc796c
+[2026-07-05 16:25:52,022] INFO in downloader: Direct HTTP stream Job 9e0fb311a1564a80b3e94fa93adc796c completed safely: 9e0fb311a1564a80b3e94fa93adc796c.mp4
+[2026-07-05 16:28:05,092] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:28:05,092] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:29:51,269] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:29:51,270] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:29:52,001] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:29:52,001] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:31:44,353] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:31:44,353] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:32:42,288] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:32:42,289] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:32:43,149] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:32:43,150] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:35:34,763] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:35:34,764] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:35:35,654] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:35:35,655] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:35:57,899] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a269eabf872035f7f2
+[2026-07-05 16:36:03,607] INFO in downloader: Executing background HTTP request stream for Job 29e31c71bb7d473496659e7d16ccba51 to: https://www.diskwala.com/api/v1/file/download/6a45f4a269eabf872035f7f2
+[2026-07-05 16:36:04,423] INFO in downloader: Direct HTTP stream Job 29e31c71bb7d473496659e7d16ccba51 completed safely: 29e31c71bb7d473496659e7d16ccba51.mp4
+[2026-07-05 16:38:16,133] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:38:16,134] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:38:32,355] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:38:32,355] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:38:49,668] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:38:49,669] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:39:40,651] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:39:40,651] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:39:41,676] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:39:41,676] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:40:46,883] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f804
+[2026-07-05 16:40:50,624] INFO in downloader: Executing background HTTP request stream for Job 69b1a4029ebb4e089a226b554142a39d to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f804
+[2026-07-05 16:40:51,413] INFO in downloader: Direct HTTP stream Job 69b1a4029ebb4e089a226b554142a39d completed safely: 69b1a4029ebb4e089a226b554142a39d.mp4
+[2026-07-05 16:44:14,599] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:44:14,600] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:44:15,506] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:44:15,506] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:44:40,268] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f807
+[2026-07-05 16:44:55,411] INFO in downloader: Executing background HTTP request stream for Job 429cdd041cb741d7bc95bc482aeab907 to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f807
+[2026-07-05 16:44:56,432] INFO in downloader: Direct HTTP stream Job 429cdd041cb741d7bc95bc482aeab907 completed safely: 429cdd041cb741d7bc95bc482aeab907.mp4
+[2026-07-05 16:47:40,538] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:47:40,538] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:47:41,299] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:47:41,300] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:48:06,249] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f80a
+[2026-07-05 16:48:09,890] INFO in downloader: Executing background HTTP request stream for Job 9f8aadb1dc2e45a792943fe1fa1f043a to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f80a
+[2026-07-05 16:48:10,758] INFO in downloader: Direct HTTP stream Job 9f8aadb1dc2e45a792943fe1fa1f043a completed safely: 9f8aadb1dc2e45a792943fe1fa1f043a.mp4
+[2026-07-05 16:50:42,799] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:50:42,799] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:50:43,775] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:50:43,776] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:50:57,455] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f80a
+[2026-07-05 16:51:01,638] INFO in downloader: Executing background HTTP request stream for Job 806e862d61ad4cbbb4114a4477676a2f to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f80a
+[2026-07-05 16:51:02,512] INFO in downloader: Direct HTTP stream Job 806e862d61ad4cbbb4114a4477676a2f completed safely: 806e862d61ad4cbbb4114a4477676a2f.mp4
+[2026-07-05 16:51:15,780] INFO in downloader: Executing background HTTP request stream for Job 5620c88c4ba14f31a44f8ad5bf8bfd94 to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f80a
+[2026-07-05 16:51:16,570] INFO in downloader: Direct HTTP stream Job 5620c88c4ba14f31a44f8ad5bf8bfd94 completed safely: 5620c88c4ba14f31a44f8ad5bf8bfd94.mp4
+[2026-07-05 16:54:05,197] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:54:05,197] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:54:16,052] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:54:16,053] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:54:17,030] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:54:17,031] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:54:29,360] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f80a
+[2026-07-05 16:54:33,339] INFO in downloader: Executing background HTTP request stream for Job 751ec417ab58401fa33d2d8860a029a1 to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f80a
+[2026-07-05 16:54:34,172] INFO in downloader: Direct HTTP stream Job 751ec417ab58401fa33d2d8860a029a1 completed safely: 751ec417ab58401fa33d2d8860a029a1.mp4
+[2026-07-05 16:56:41,990] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:56:41,991] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:56:43,017] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:56:43,018] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:56:56,548] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f80a
+[2026-07-05 16:58:50,622] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:58:50,623] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:58:51,442] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:58:51,442] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:59:14,496] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f80c
+[2026-07-05 16:59:48,061] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:59:48,061] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 16:59:48,895] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 16:59:48,896] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 17:01:21,294] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f810
+[2026-07-05 17:08:00,320] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 17:08:00,321] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 17:08:21,309] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 17:08:21,310] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 17:08:22,237] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 17:08:22,238] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 17:08:49,753] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f816
+[2026-07-05 17:08:52,738] INFO in downloader: Executing background HTTP request stream for Job c504624158e9474b8f7241b69e160384 to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f816
+[2026-07-05 17:08:53,422] ERROR in downloader: Direct HTTP fallback streaming loop failed for Job c504624158e9474b8f7241b69e160384
+Traceback (most recent call last):
+  File "C:\Users\vinit\Downloads\link-video-downloader\link-video-downloader\app\services\downloader.py", line 164, in _run_download
+    raise ExtractionError("Diskwala server denied direct streaming access. Anti-bot restriction triggered.")
+app.services.exceptions.ExtractionError: Diskwala server denied direct streaming access. Anti-bot restriction triggered.
+[2026-07-05 17:09:12,195] INFO in downloader: Executing background HTTP request stream for Job d5003532ca1146459d18ede0c9e70294 to: https://www.diskwala.com/api/v1/file/download/6a45f4a369eabf872035f816
+[2026-07-05 17:09:12,940] ERROR in downloader: Direct HTTP fallback streaming loop failed for Job d5003532ca1146459d18ede0c9e70294
+Traceback (most recent call last):
+  File "C:\Users\vinit\Downloads\link-video-downloader\link-video-downloader\app\services\downloader.py", line 164, in _run_download
+    raise ExtractionError("Diskwala server denied direct streaming access. Anti-bot restriction triggered.")
+app.services.exceptions.ExtractionError: Diskwala server denied direct streaming access. Anti-bot restriction triggered.
+[2026-07-05 17:10:58,173] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 17:10:58,174] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 17:10:59,144] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 17:10:59,144] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 17:11:23,745] INFO in downloader: Unsupported URL detected by yt-dlp. Attempting HTTP Fallback for: https://www.diskwala.com/app/6a45f4a369eabf872035f816
+[2026-07-05 19:42:02,935] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 19:42:02,935] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 19:42:03,913] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 19:42:03,914] INFO in __init__: Application initialized (env=development, debug=True)
+[2026-07-05 19:50:22,135] INFO in cleanup: Cleanup thread started (retention=3600s, interval=900s)
+[2026-07-05 19:50:22,136] INFO in __init__: Application initialized (env=development, debug=True)
