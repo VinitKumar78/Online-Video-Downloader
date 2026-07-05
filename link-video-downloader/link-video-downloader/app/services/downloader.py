@@ -70,21 +70,19 @@ class DownloaderService:
         if self._is_youtube(url):
             for base_api in COBALT_API_POOL:
                 try:
-                    # Cobalt standard payload schema
+                    # Updated Cobalt v7 parameter mapping (vQuality instead of videoQuality)
                     payload = {
                         "url": url,
-                        "videoQuality": "720",
-                        "downloadMode": "auto"
+                        "vQuality": "720"
                     }
                     headers = {
                         "Accept": "application/json",
                         "Content-Type": "application/json"
                     }
-                    response = requests.post(base_api, json=payload, headers=headers, timeout=5)
+                    response = requests.post(base_api, json=payload, headers=headers, timeout=6)
                     
                     if response.status_code == 200:
                         data = response.json()
-                        # If Cobalt returns a streaming URL directly or picker data structures
                         if data.get("status") in ["stream", "redirect", "success"] or data.get("url"):
                             return VideoInfo(
                                 title="YouTube Media Stream",
@@ -154,8 +152,7 @@ class DownloaderService:
                     job_store.update(job_id, progress="Initiating bypass handshake...")
                     payload = {
                         "url": url,
-                        "videoQuality": "720",
-                        "downloadMode": "auto"
+                        "vQuality": "720"
                     }
                     headers = {
                         "Accept": "application/json",
