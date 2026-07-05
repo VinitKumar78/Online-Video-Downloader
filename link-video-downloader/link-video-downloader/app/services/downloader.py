@@ -6,7 +6,7 @@ ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
 import logging
 import os
 import threading
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
 import requests
 import yt_dlp
@@ -17,12 +17,11 @@ from app.utils.validators import is_valid_url, sanitize_filename
 
 logger = logging.getLogger(__name__)
 
-# A pool of highly active, reliable public instances to guarantee uptime
-YOUTUBE_BACKEND_POOL = [
-    "https://inv.tux.digital",
-    "https://invidious.projectsegfau.lt",
-    "https://yewtu.be",
-    "https://invidious.privacydev.net"
+# Distributed pool of public Cobalt API instances for high-availability YouTube extraction
+COBALT_API_POOL = [
+    "https://api.cobalt.tools",
+    "https://co.wuk.sh",
+    "https://cobalt.api.v0.pw"
 ]
 
 class VideoInfo:
@@ -54,17 +53,6 @@ class DownloaderService:
         parsed = urlparse(url)
         return any(domain in parsed.netloc for domain in ["youtube.com", "youtu.be"])
 
-    def _get_youtube_id(self, url: str) -> str:
-        parsed = urlparse(url)
-        if parsed.netloc == 'youtu.be':
-            return parsed.path.strip('/')
-        if '/shorts/' in parsed.path:
-            return parsed.path.split('/shorts/')[-1].split('?')[0]
-        if '/live/' in parsed.path:
-            return parsed.path.split('/live/')[-1].split('?')[0]
-        query = parse_qs(parsed.query)
-        return query.get('v', [None])[0] or parsed.path.split('/')[-1]
-
     def _resolve_direct_url(self, url: str) -> str:
         parsed = urlparse(url)
         if "diskwala.com" in parsed.netloc:
@@ -80,38 +68,36 @@ class DownloaderService:
             raise InvalidURLError("The link provided is empty or not a valid URL.")
 
         if self._is_youtube(url):
-            video_id = self._get_youtube_id(url)
-            # Cycle through instances until one responds beautifully
-            for base_instance in YOUTUBE_BACKEND_POOL:
+            for base_api in COBALT_API_POOL:
                 try:
-                    api_url = f"{base_instance}/api/v1/videos/{video_id}"
-                    response = requests.get(api_url, timeout=4)
+                    # Cobalt standard payload schema
+                    payload = {
+                        "url": url,
+                        "videoQuality": "720",
+                        "downloadMode": "auto"
+                    }
+                    headers = {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    }
+                    response = requests.post(base_api, json=payload, headers=headers, timeout=5)
+                    
                     if response.status_code == 200:
                         data = response.json()
-                        
-                        qualities = []
-                        seen_heights = set()
-                        for fmt in data.get("formatStreams", []):
-                            height = fmt.get("height")
-                            if height and height not in seen_heights:
-                                seen_heights.add(height)
-                                qualities.append({"height": height, "label": f"{height}p"})
-                        
-                        if not qualities:
-                            qualities = [{"height": 720, "label": "720p (Auto)"}]
-
-                        return VideoInfo(
-                            title=data.get("title", "YouTube Video"),
-                            thumbnail=data.get("videoThumbnails", [{}])[0].get("url", ""),
-                            duration=data.get("lengthSeconds"),
-                            uploader=data.get("author", "YouTube Creator"),
-                            qualities=qualities
-                        )
+                        # If Cobalt returns a streaming URL directly or picker data structures
+                        if data.get("status") in ["stream", "redirect", "success"] or data.get("url"):
+                            return VideoInfo(
+                                title="YouTube Media Stream",
+                                thumbnail=None,
+                                duration=None,
+                                uploader="YouTube Core Platform",
+                                qualities=[{"height": 720, "label": "720p (High Quality)"}]
+                            )
                 except Exception as e:
-                    logger.warning("Instance %s failed or timed out: %s", base_instance, e)
-                    continue # Try next instance smoothly
+                    logger.warning("Cobalt Instance %s failed metadata step: %s", base_api, e)
+                    continue
 
-        # Fallback native path
+        # Fallback native processing pipeline for Instagram, Facebook, etc.
         ydl_opts = {
             "quiet": True, 
             "no_warnings": True, 
@@ -132,7 +118,7 @@ class DownloaderService:
             )
         except Exception as exc:
             logger.exception("Unexpected error extracting info for %s", url)
-            raise ExtractionError("YouTube engine overload. Please try downloading again in a few seconds.")
+            raise ExtractionError("Extraction engine error. Please try alternative platform mirror links.")
 
     @staticmethod
     def _build_quality_options(formats: list) -> list:
@@ -163,21 +149,21 @@ class DownloaderService:
 
     def _run_download(self, job_id: str, url: str, height) -> None:
         if self._is_youtube(url):
-            video_id = self._get_youtube_id(url)
-            for base_instance in YOUTUBE_BACKEND_POOL:
+            for base_api in COBALT_API_POOL:
                 try:
-                    job_store.update(job_id, progress="Connecting to secure proxy...")
-                    api_url = f"{base_instance}/api/v1/videos/{video_id}"
-                    res = requests.get(api_url, timeout=5).json()
+                    job_store.update(job_id, progress="Initiating bypass handshake...")
+                    payload = {
+                        "url": url,
+                        "videoQuality": "720",
+                        "downloadMode": "auto"
+                    }
+                    headers = {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    }
+                    res = requests.post(base_api, json=payload, headers=headers, timeout=8).json()
                     
-                    stream_url = None
-                    for fmt in res.get("formatStreams", []):
-                        if str(fmt.get("height")) == str(height):
-                            stream_url = fmt.get("url")
-                            break
-                    if not stream_url and res.get("formatStreams"):
-                        stream_url = res["formatStreams"][0].get("url")
-                    
+                    stream_url = res.get("url")
                     if stream_url:
                         target_filename = f"{job_id}.mp4"
                         target_path = os.path.join(self.download_dir, target_filename)
@@ -195,20 +181,20 @@ class DownloaderService:
                                         percent = int((downloaded / total_size) * 100)
                                         job_store.update(job_id, progress=f"{percent}%")
                                     else:
-                                        job_store.update(job_id, progress="Downloading stream...")
+                                        job_store.update(job_id, progress="Streaming file data...")
                         
                         job_store.update(
                             job_id,
                             status=JobStatus.DONE,
                             filename=target_filename,
-                            title=sanitize_filename(res.get("title", "video"), self.max_filename_length)
+                            title="YouTube Downloader Media"
                         )
-                        return # Success! Exit function.
+                        return 
                 except Exception as e:
-                    logger.error("Instance download route failed for %s, trying next: %s", base_instance, e)
+                    logger.error("Cobalt instance routing down: %s", e)
                     continue
 
-        # -- Path B: Standard Native Execution (For Instagram, FB, Twitter, etc.) --
+        # -- Path B: Native Pipeline For Instagram, Facebook, Twitter, etc. --
         def progress_hook(event):
             if event.get("status") == "downloading":
                 job_store.update(job_id, progress=event.get("_percent_str", "0%").strip())
@@ -250,4 +236,4 @@ class DownloaderService:
                 title=sanitize_filename(info.get("title", "video"), self.max_filename_length),
             )
         except Exception as exc:
-            job_store.update(job_id, status=JobStatus.ERROR, error="Extraction rate-limit hit. Please try another video stream link.")
+            job_store.update(job_id, status=JobStatus.ERROR, error="Extraction error. Check system configuration.")
