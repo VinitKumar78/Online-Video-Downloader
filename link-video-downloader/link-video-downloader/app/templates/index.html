@@ -24,7 +24,7 @@
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-dark); color: var(--text-primary);
-            min-height: 100vh; display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
             overflow-x: hidden; position: relative;
         }
         .glow-bg-orb {
@@ -32,7 +32,7 @@
             background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.03) 50%, rgba(0,0,0,0) 100%);
             top: -10%; left: 50%; transform: translateX(-50%); z-index: 0; pointer-events: none;
         }
-        .app-container { width: 100%; max-width: 760px; padding: 2.5rem 1.5rem; z-index: 1; }
+        .app-container { width: 100%; max-width: 760px; padding: 2.5rem 1.5rem 1rem 1.5rem; z-index: 1; }
         .app-header { text-align: center; margin-bottom: 3rem; }
         .status-badge {
             display: inline-flex; align-items: center; background: rgba(255, 255, 255, 0.04);
@@ -70,8 +70,12 @@
         .error-container { margin-top: 1.5rem; background: var(--error-bg); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 14px; padding: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .error-title { display: block; font-weight: 700; color: #f87171; font-size: 0.95rem; margin-bottom: 0.25rem; }
         .error-message { color: rgba(248, 113, 113, 0.85); font-size: 0.9rem; line-height: 1.5; }
-        .app-footer { border-left: 3px solid rgba(255,255,255,0.1); padding-left: 1.25rem; }
-        .app-footer p { color: rgba(148, 163, 184, 0.6); font-size: 0.85rem; line-height: 1.6; }
+        .app-note { border-left: 3px solid rgba(255,255,255,0.1); padding-left: 1.25rem; margin-bottom: 1rem; }
+        .app-note p { color: rgba(148, 163, 184, 0.6); font-size: 0.85rem; line-height: 1.6; }
+        .site-footer { width: 100%; text-align: center; border-top: 1px solid var(--border-glass); padding: 1.5rem 0; margin-top: 2rem; z-index: 1; color: var(--text-secondary); font-size: 0.85rem; }
+        .site-footer p { margin-bottom: 0.5rem; }
+        .site-footer a { color: var(--accent-glow); text-decoration: none; transition: color 0.2s ease; }
+        .site-footer a:hover { color: var(--neon-cyan); }
         .hidden { display: none !important; }
         @keyframes beacon { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -123,10 +127,20 @@
             </div>
         </section>
 
-        <footer class="app-footer">
+        <div class="app-note">
             <p><strong>Note:</strong> Only download content for which you possess explicit authorization or legal ownership. Please remain fully compliant with the respective platform's Terms of Service.</p>
-        </footer>
+        </div>
     </main>
+
+    <footer class="site-footer">
+        <p>© 2026 Vinit Kumar. All rights reserved.</p>
+        <div>
+            <a href="#">Terms of Service</a>
+            <span style="color: rgba(255,255,255,0.15); margin: 0 0.5rem;">•</span>
+            <a href="#">Privacy Policy</a>
+        </div>
+    </footer>
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
