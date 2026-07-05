@@ -61,7 +61,9 @@ class DownloaderService:
             "quiet": True, 
             "no_warnings": True, 
             "skip_download": True,
-            "ffmpeg_location": ffmpeg_path  # Bundled configuration path for free data centers
+            "ffmpeg_location": ffmpeg_path,
+            # Force client layout simulation to dodge bot firewalls
+            "extractor_args": {"youtube": {"player_client": ["web_safari"]}},
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -144,7 +146,8 @@ class DownloaderService:
             ydl_opts = {
                 "quiet": True, 
                 "simulate": True,
-                "ffmpeg_location": ffmpeg_path
+                "ffmpeg_location": ffmpeg_path,
+                "extractor_args": {"youtube": {"player_client": ["web_safari"]}},
             }
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -234,13 +237,15 @@ class DownloaderService:
 
         out_template = os.path.join(self.download_dir, f"{job_id}.%(ext)s")
         ydl_opts = {
-            "ffmpeg_location": ffmpeg_path,  # Dynamically points yt-dlp to the imageio binary on Render
+            "ffmpeg_location": ffmpeg_path,
             "format": format_selector,
             "outtmpl": out_template,
             "merge_output_format": self.output_format,
             "progress_hooks": [progress_hook],
             "quiet": True,
             "no_warnings": True,
+            # Mask data center server fingerprinting from YouTube filters
+            "extractor_args": {"youtube": {"player_client": ["web_safari"]}},
         }
 
         try:
