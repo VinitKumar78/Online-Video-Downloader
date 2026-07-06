@@ -20,7 +20,6 @@ class DownloaderService:
         Initializes the DownloaderService and accepts Flask app configuration settings.
         Flexible keyword arguments ensure compatibility across different route setups.
         """
-        # Resolve output directory using download_dir (from routes) or output_dir fallback
         dir_path = download_dir or output_dir or 'downloads'
         self.output_dir = os.path.join(ROOT_DIR, dir_path)
         if not os.path.exists(self.output_dir):
@@ -64,7 +63,6 @@ class DownloaderService:
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=download)
-                # Handle playlists or multi-item posts by selecting the first entry
                 if 'entries' in info and info['entries']:
                     info = info['entries'][0]
                 return info
@@ -73,10 +71,13 @@ class DownloaderService:
         except Exception as e:
             raise Exception(f"An unexpected error occurred during resolution: {str(e)}")
 
+    # --- ALIASES FOR ROUTES.PY COMPATIBILITY ---
+    def fetch_info(self, url: str) -> Dict[str, Any]:
+        """Matches app.routes line 38: _get_service().fetch_info(url)"""
+        return self.extract_info(url, download=False)
+
     def get_video_info(self, url: str) -> Dict[str, Any]:
-        """
-        Alias for extract_info without downloading to disk.
-        """
+        """Alias for extract_info without downloading to disk."""
         return self.extract_info(url, download=False)
 
     def download_video(self, url: str) -> str:
@@ -100,7 +101,5 @@ class DownloaderService:
             raise Exception(f"System error during download: {str(e)}")
 
     def download(self, url: str) -> str:
-        """
-        Alias for download_video.
-        """
+        """Alias for download_video."""
         return self.download_video(url)
