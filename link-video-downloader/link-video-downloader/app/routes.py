@@ -1,6 +1,6 @@
 import logging
-
-from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, Response, current_app, jsonify, render_template, request, send_from_directory, stream_with_context
+import requests
 
 from app.services.downloader import DownloaderService
 from app.services.exceptions import ExtractionError, InvalidURLError
@@ -42,6 +42,47 @@ def get_info():
         return jsonify({"error": f"Could not process this link: {str(exc)[:200]}"}), 422
 
     return jsonify(info.to_dict())
+
+
+@main_bp.route("/api/stream-download", methods=["GET"])
+def stream_download():
+    """Instantly streams media directly into the browser download tray."""
+    url = request.args.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "URL parameter is required."}), 400
+
+    service = _get_service()
+    try:
+        # Extract direct stream URL and safe filename from yt-dlp engine
+        direct_url, filename = service.get_direct_stream(url)
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "*/*"
+        }
+        
+        external_req = requests.get(direct_url, headers=headers, stream=True, timeout=30)
+        external_req.raise_for_status()
+        
+        def generate():
+            for chunk in external_req.iter_content(chunk_size=131072):
+                if chunk:
+                    yield chunk
+
+        resp = Response(stream_with_context(generate()), content_type="video/mp4")
+        resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        
+        total_length = external_req.headers.get("Content-Length")
+        if total_length:
+            resp.headers["Content-Length"] = total_length
+            
+        return resp
+
+    except InvalidURLError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.exception("Streaming route failure: %s", exc)
+        return jsonify({"error": "Failed to resolve stream on cloud server."}), 500
 
 
 @main_bp.route("/api/download", methods=["POST"])
