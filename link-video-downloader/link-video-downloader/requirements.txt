@@ -1,5 +1,0 @@
-Flask
-gunicorn
-yt-dlp
-imageio-ffmpeg
-requests
