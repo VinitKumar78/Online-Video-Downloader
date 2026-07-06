@@ -19,12 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class VideoInfo:
-    def __init__(self, title, thumbnail, duration, uploader, qualities):
+    def __init__(self, title, thumbnail, duration, uploader, qualities, is_cloud_platform=False):
         self.title = title
         self.thumbnail = thumbnail
         self.duration = duration
         self.uploader = uploader
         self.qualities = qualities
+        self.is_cloud_platform = is_cloud_platform
 
     def to_dict(self):
         return {
@@ -32,7 +33,8 @@ class VideoInfo:
             "thumbnail": self.thumbnail,
             "duration": self.duration,
             "uploader": self.uploader,
-            "qualities": self.qualities
+            "qualities": self.qualities,
+            "is_cloud_platform": self.is_cloud_platform
         }
 
 
@@ -46,12 +48,32 @@ class DownloaderService:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.cookie_path = os.path.join(base_dir, "instagram_cookies.txt")
 
+    def _should_bypass_on_cloud(self, url: str) -> bool:
+        """Identify if the target link belongs to a platform heavily blocked on cloud datacenters."""
+        domain = urlparse(url).netloc.lower()
+        return any(x in domain for x in ["youtube", "youtu.be", "instagram"])
+
     # -- Metadata -------------------------------------------------------
 
     def fetch_info(self, url: str) -> VideoInfo:
         if not is_valid_url(url):
             raise InvalidURLError("The link provided is empty or not a valid URL.")
 
+        # Immediately flag YouTube and Instagram so Render doesn't try to process them
+        if self._should_bypass_on_cloud(url):
+            parsed_domain = urlparse(url).netloc.lower()
+            platform_name = "Instagram" if "instagram" in parsed_domain else "YouTube"
+            
+            return VideoInfo(
+                title=f"{platform_name} Video Asset",
+                thumbnail=None,
+                duration=None,
+                uploader="Direct Engine Stream",
+                qualities=[{"height": 720, "label": "720p (High Quality)"}],
+                is_cloud_platform=True
+            )
+
+        # Standard native yt-dlp processing for other allowed links
         ydl_opts = {
             "quiet": True, 
             "no_warnings": True, 
@@ -71,20 +93,12 @@ class DownloaderService:
                 thumbnail=info.get("thumbnail"),
                 duration=info.get("duration"),
                 uploader=info.get("uploader", "Media Engine"),
-                qualities=self._build_quality_options(info.get("formats", []) or [])
+                qualities=self._build_quality_options(info.get("formats", []) or []),
+                is_cloud_platform=False
             )
-        except Exception:
-            # Safe universal metadata return if datacenter network throttling occurs
-            parsed_domain = urlparse(url).netloc.lower()
-            platform_name = "Instagram" if "instagram" in parsed_domain else "YouTube" if any(x in parsed_domain for x in ["youtube", "youtu.be"]) else "Media"
-            
-            return VideoInfo(
-                title=f"{platform_name} Video Asset",
-                thumbnail=None,
-                duration=None,
-                uploader="Direct Engine Stream",
-                qualities=[{"height": 720, "label": "720p (High Quality)"}]
-            )
+        except Exception as exc:
+            logger.exception("Metadata parsing failure for URL: %s", url)
+            raise ExtractionError("Extraction engine error. Please double check your video link configuration.")
 
     @staticmethod
     def _build_quality_options(formats: list) -> list:
@@ -157,49 +171,5 @@ class DownloaderService:
                 title=sanitize_filename(info.get("title", "video"), self.max_filename_length),
             )
         except Exception as exc:
-            logger.warning("Primary engine extraction encountered datacenter limits for job %s. Initiating HTTP stream bypass...", job_id)
-            try:
-                # Internal fallback: resolve CDN stream directly without failing the job
-                fallback_filename = f"{job_id}.{self.output_format}"
-                fallback_path = os.path.join(self.download_dir, fallback_filename)
-                
-                # Fetch stream resolution via clean header exchange
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "Accept": "*/*"
-                }
-                
-                with yt_dlp.YoutubeDL({"quiet": True, "format": "best"}) as ydl_fallback:
-                    stream_info = ydl_fallback.extract_info(url, download=False)
-                    direct_url = stream_info.get("url")
-                    
-                    if direct_url:
-                        res = requests.get(direct_url, headers=headers, stream=True, timeout=60)
-                        res.raise_for_status()
-                        
-                        total_size = int(res.headers.get('content-length', 0))
-                        downloaded = 0
-                        
-                        with open(fallback_path, 'wb') as f:
-                            for chunk in res.iter_content(chunk_size=131072):
-                                if chunk:
-                                    f.write(chunk)
-                                    downloaded += len(chunk)
-                                    if total_size > 0:
-                                        pct = int((downloaded / total_size) * 100)
-                                        job_store.update(job_id, progress=f"{pct}%")
-                                    else:
-                                        job_store.update(job_id, progress="Streaming...")
-                                        
-                        job_store.update(
-                            job_id,
-                            status=JobStatus.DONE,
-                            filename=fallback_filename,
-                            title=sanitize_filename(stream_info.get("title", "video"), self.max_filename_length)
-                        )
-                        return
-                        
-                raise ExtractionError("Stream resolution exhausted.")
-            except Exception as final_exc:
-                logger.exception("Unified worker loop failed: %s", final_exc)
-                job_store.update(job_id, status=JobStatus.ERROR, error="Extraction temporarily throttled by platform. Please try again.")
+            logger.exception("Unified worker loop failed: %s", exc)
+            job_store.update(job_id, status=JobStatus.ERROR, error="Extraction temporarily throttled by platform. Please try again.")
