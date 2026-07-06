@@ -2,19 +2,32 @@ import os
 import yt_dlp
 from typing import Dict, Any, Optional
 
-# Locate root directory to find cookies.txt dynamically
+# Locate root directory dynamically to find cookies.txt
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 COOKIES_PATH = os.path.join(ROOT_DIR, 'cookies.txt')
 
 
 class DownloaderService:
-    def __init__(self, output_dir: str = 'downloads'):
+    def __init__(
+        self,
+        download_dir: Optional[str] = 'downloads',
+        output_dir: Optional[str] = None,
+        output_format: Optional[str] = '%(id)s_%(title).50s.%(ext)s',
+        max_filename_length: Optional[int] = 200,
+        **kwargs
+    ):
         """
-        Initializes the DownloaderService and ensures the output directory exists.
+        Initializes the DownloaderService and accepts Flask app configuration settings.
+        Flexible keyword arguments ensure compatibility across different route setups.
         """
-        self.output_dir = os.path.join(ROOT_DIR, output_dir)
+        # Resolve output directory using download_dir (from routes) or output_dir fallback
+        dir_path = download_dir or output_dir or 'downloads'
+        self.output_dir = os.path.join(ROOT_DIR, dir_path)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
+
+        self.output_format = output_format or '%(id)s_%(title).50s.%(ext)s'
+        self.max_filename_length = max_filename_length or 200
 
     def get_base_opts(self) -> Dict[str, Any]:
         """
@@ -35,7 +48,7 @@ class DownloaderService:
             }
         }
 
-        # Check working directory or root directory for generated cookies.txt
+        # Automatically attach cookies if available on local disk or cloud environment
         if os.path.exists('cookies.txt'):
             opts['cookiefile'] = 'cookies.txt'
         elif os.path.exists(COOKIES_PATH):
@@ -51,7 +64,7 @@ class DownloaderService:
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=download)
-                # Handle playlists or carousel posts by selecting the first item
+                # Handle playlists or multi-item posts by selecting the first entry
                 if 'entries' in info and info['entries']:
                     info = info['entries'][0]
                 return info
@@ -72,7 +85,8 @@ class DownloaderService:
         """
         opts = self.get_base_opts()
         opts.update({
-            'outtmpl': os.path.join(self.output_dir, '%(id)s_%(title).50s.%(ext)s'),
+            'outtmpl': os.path.join(self.output_dir, '%(id)s.%(ext)s'),
+            'trim_file_name': self.max_filename_length,
         })
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
