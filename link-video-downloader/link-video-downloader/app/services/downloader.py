@@ -1,175 +1,84 @@
-import imageio_ffmpeg
-
-# Get the path to the ffmpeg binary installed via pip
-ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-
-import logging
 import os
-import threading
-from urllib.parse import urlparse
-
-import requests
 import yt_dlp
+from typing import Dict, Any, Optional
 
-from app.services.exceptions import ExtractionError, InvalidURLError
-from app.services.job_store import Job, JobStatus, job_store
-from app.utils.validators import is_valid_url, sanitize_filename
-
-logger = logging.getLogger(__name__)
+# Automatically locate cookies.txt in the root directory
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+COOKIES_PATH = os.path.join(ROOT_DIR, 'cookies.txt')
 
 
-class VideoInfo:
-    def __init__(self, title, thumbnail, duration, uploader, qualities, is_cloud_platform=False):
-        self.title = title
-        self.thumbnail = thumbnail
-        self.duration = duration
-        self.uploader = uploader
-        self.qualities = qualities
-        self.is_cloud_platform = is_cloud_platform
-
-    def to_dict(self):
-        return {
-            "title": self.title,
-            "thumbnail": self.thumbnail,
-            "duration": self.duration,
-            "uploader": self.uploader,
-            "qualities": self.qualities,
-            "is_cloud_platform": self.is_cloud_platform
+def get_base_ydl_opts() -> Dict[str, Any]:
+    """
+    Returns base configuration options for yt-dlp, including anti-bot headers
+    and cookie file injection if available.
+    """
+    opts = {
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'nocheckcertificate': True,
+        'quiet': True,
+        'no_warnings': True,
+        'extract_flat': False,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
         }
+    }
+
+    # Automatically attach cookies.txt if it exists in your project root
+    if os.path.exists(COOKIES_PATH):
+        opts['cookiefile'] = COOKIES_PATH
+    else:
+        print(f"[Warning] Cookies file not found at: {COOKIES_PATH}. Some platforms may block cloud requests.")
+
+    return opts
 
 
-class DownloaderService:
-    def __init__(self, download_dir: str, output_format: str = "mp4",
-                 max_filename_length: int = 150):
-        self.download_dir = download_dir
-        self.output_format = output_format
-        self.max_filename_length = max_filename_length
-        
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.cookie_path = os.path.join(base_dir, "instagram_cookies.txt")
-
-    def _should_bypass_on_cloud(self, url: str) -> bool:
-        """Identify if the target link belongs to a platform heavily blocked on cloud datacenters."""
-        domain = urlparse(url).netloc.lower()
-        return any(x in domain for x in ["youtube", "youtu.be", "instagram"])
-
-    # -- Metadata -------------------------------------------------------
-
-    def fetch_info(self, url: str) -> VideoInfo:
-        if not is_valid_url(url):
-            raise InvalidURLError("The link provided is empty or not a valid URL.")
-
-        # Immediately flag YouTube and Instagram so Render doesn't try to process them
-        if self._should_bypass_on_cloud(url):
-            parsed_domain = urlparse(url).netloc.lower()
-            platform_name = "Instagram" if "instagram" in parsed_domain else "YouTube"
+def extract_video_info(url: str) -> Dict[str, Any]:
+    """
+    Extracts video metadata and direct streaming links without downloading the file locally.
+    """
+    opts = get_base_ydl_opts()
+    
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
             
-            return VideoInfo(
-                title=f"{platform_name} Video Asset",
-                thumbnail=None,
-                duration=None,
-                uploader="Direct Engine Stream",
-                qualities=[{"height": 720, "label": "720p (High Quality)"}],
-                is_cloud_platform=True
-            )
-
-        # Standard native yt-dlp processing for other allowed links
-        ydl_opts = {
-            "quiet": True, 
-            "no_warnings": True, 
-            "skip_download": True,
-            "ffmpeg_location": ffmpeg_path,
-        }
-
-        if os.path.exists(self.cookie_path):
-            ydl_opts["cookiefile"] = self.cookie_path
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
+            # Handle playlists or multi-video posts by picking the first entry
+            if 'entries' in info and info['entries']:
+                info = info['entries'][0]
                 
-            return VideoInfo(
-                title=info.get("title", "Video Stream"),
-                thumbnail=info.get("thumbnail"),
-                duration=info.get("duration"),
-                uploader=info.get("uploader", "Media Engine"),
-                qualities=self._build_quality_options(info.get("formats", []) or []),
-                is_cloud_platform=False
-            )
-        except Exception as exc:
-            logger.exception("Metadata parsing failure for URL: %s", url)
-            raise ExtractionError("Extraction engine error. Please double check your video link configuration.")
+            return info
+    except yt_dlp.utils.DownloadError as e:
+        raise Exception(f"Failed to resolve stream on cloud server: {str(e)}")
+    except Exception as e:
+        raise Exception(f"An unexpected error occurred while resolving video info: {str(e)}")
 
-    @staticmethod
-    def _build_quality_options(formats: list) -> list:
-        seen_heights = set()
-        options = []
-        for fmt in formats:
-            height = fmt.get("height")
-            if not height or height in seen_heights or fmt.get("vcodec") == "none":
-                continue
-            seen_heights.add(height)
-            options.append({"height": height, "label": f"{height}p"})
 
-        options.sort(key=lambda item: item["height"], reverse=True)
-        return options or [{"height": 0, "label": "Best available"}]
+def download_video_file(url: str, output_dir: str = 'downloads') -> str:
+    """
+    Downloads the video directly to the server's local storage and returns the filepath.
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
 
-    # -- Download ---------------------------------------------------------
+    opts = get_base_ydl_opts()
+    opts.update({
+        'outtmpl': os.path.join(output_dir, '%(id)s_%(title).50s.%(ext)s'),
+        # Fallback to single format if ffmpeg is missing on Render
+        'format': 'best[ext=mp4]/bestvideo+bestaudio/best',
+    })
 
-    def start_download(self, url: str, height: int) -> Job:
-        if not is_valid_url(url):
-            raise InvalidURLError("The link provided is empty or not a valid URL.")
-
-        job = job_store.create()
-        thread = threading.Thread(
-            target=self._run_download, args=(job.id, url, height), daemon=True
-        )
-        thread.start()
-        return job
-
-    def _run_download(self, job_id: str, url: str, height) -> None:
-        def progress_hook(event):
-            if event.get("status") == "downloading":
-                pct_str = event.get("_percent_str", "0%").strip()
-                clean_pct = pct_str.replace('\x1b[0;32m', '').replace('\x1b[0m', '')
-                job_store.update(job_id, progress=clean_pct)
-            elif event.get("status") == "finished":
-                job_store.update(job_id, progress="100%")
-
-        format_selector = "bestvideo+bestaudio/best"
-        if height and int(height) > 0:
-            format_selector = f"bestvideo[height<={height}]+bestaudio/best[height<={height}]/best"
-
-        out_template = os.path.join(self.download_dir, f"{job_id}.%(ext)s")
-        ydl_opts = {
-            "ffmpeg_location": ffmpeg_path,
-            "format": format_selector,
-            "outtmpl": out_template,
-            "merge_output_format": self.output_format,
-            "progress_hooks": [progress_hook],
-            "quiet": True,
-            "no_warnings": True,
-        }
-
-        if os.path.exists(self.cookie_path):
-            ydl_opts["cookiefile"] = self.cookie_path
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                final_path = ydl.prepare_filename(info)
-                base, _ = os.path.splitext(final_path)
-                merged_path = f"{base}.{self.output_format}"
-                filename = os.path.basename(
-                    merged_path if os.path.exists(merged_path) else final_path
-                )
-
-            job_store.update(
-                job_id,
-                status=JobStatus.DONE,
-                filename=filename,
-                title=sanitize_filename(info.get("title", "video"), self.max_filename_length),
-            )
-        except Exception as exc:
-            logger.exception("Unified worker loop failed: %s", exc)
-            job_store.update(job_id, status=JobStatus.ERROR, error="Extraction temporarily throttled by platform. Please try again.")
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            if 'entries' in info and info['entries']:
+                info = info['entries'][0]
+                
+            filepath = ydl.prepare_filename(info)
+            return filepath
+    except yt_dlp.utils.DownloadError as e:
+        raise Exception(f"Download failed: {str(e)}")
+    except Exception as e:
+        raise Exception(f"System error during download: {str(e)}")
