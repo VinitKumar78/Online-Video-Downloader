@@ -1,137 +1,81 @@
-import logging
-from flask import Blueprint, Response, current_app, jsonify, render_template, request, send_from_directory, stream_with_context
-import requests
-
+import os
+from flask import Blueprint, request, jsonify, send_file, current_app
 from app.services.downloader import DownloaderService
-from app.services.exceptions import ExtractionError, InvalidURLError
-from app.services.job_store import JobStatus, job_store
 
-logger = logging.getLogger(__name__)
+main_bp = Blueprint('main', __name__)
 
-main_bp = Blueprint("main", __name__)
-
-
-def _get_service() -> DownloaderService:
+def _get_service():
+    """Helper to safely initialize the downloader service with Flask config parameters."""
     return DownloaderService(
-        download_dir=current_app.config["DOWNLOAD_DIR"],
-        output_format=current_app.config["OUTPUT_FORMAT"],
-        max_filename_length=current_app.config["MAX_FILENAME_LENGTH"],
+        download_dir=current_app.config.get("DOWNLOAD_DIR", "downloads"),
+        output_format=current_app.config.get("OUTPUT_FORMAT", "%(id)s.%(ext)s"),
+        max_filename_length=current_app.config.get("MAX_FILENAME_LENGTH", 200),
     )
 
-
-@main_bp.route("/")
+@main_bp.route('/', methods=['GET'])
 def index():
-    return render_template("index.html")
+    """Renders the main frontend application UI."""
+    from flask import render_template
+    return render_template('index.html')
 
-
-@main_bp.route("/api/health")
-def health():
-    return jsonify({"status": "ok"})
-
-
-@main_bp.route("/api/info", methods=["POST"])
+@main_bp.route('/api/info', methods=['POST'])
 def get_info():
-    payload = request.get_json(silent=True) or {}
-    url = (payload.get("url") or "").strip()
-
+    """Fetches video metadata and direct streaming links safely."""
     try:
-        info = _get_service().fetch_info(url)
-    except InvalidURLError as exc:
-        return jsonify({"error": str(exc)}), 400
-    except ExtractionError as exc:
-        return jsonify({"error": f"Could not process this link: {str(exc)[:200]}"}), 422
-
-    return jsonify(info.to_dict())
-
-
-@main_bp.route("/api/stream-download", methods=["GET"])
-def stream_download():
-    """Instantly streams media directly into the browser download tray."""
-    url = request.args.get("url", "").strip()
-    if not url:
-        return jsonify({"error": "URL parameter is required."}), 400
-
-    service = _get_service()
-    try:
-        # Extract direct stream URL and safe filename from yt-dlp engine
-        direct_url, filename = service.get_direct_stream(url)
+        data = request.get_json(silent=True) or {}
+        url = data.get('url') or request.form.get('url')
         
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "*/*"
-        }
-        
-        external_req = requests.get(direct_url, headers=headers, stream=True, timeout=30)
-        external_req.raise_for_status()
-        
-        def generate():
-            for chunk in external_req.iter_content(chunk_size=131072):
-                if chunk:
-                    yield chunk
+        if not url:
+            return jsonify({"error": "Please provide a valid media URL."}), 400
 
-        resp = Response(stream_with_context(generate()), content_type="video/mp4")
-        resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        service = _get_service()
+        info = service.fetch_info(url)
         
-        total_length = external_req.headers.get("Content-Length")
-        if total_length:
-            resp.headers["Content-Length"] = total_length
+        return jsonify({
+            "status": "success",
+            "title": info.get('title', 'Video Download'),
+            "duration": info.get('duration'),
+            "thumbnail": info.get('thumbnail'),
+            "extractor": info.get('extractor_key'),
+            "url": info.get('url') or info.get('webpage_url')
+        }), 200
+
+    except Exception as e:
+        error_message = str(e)
+        current_app.logger.error(f"[API Info Error]: {error_message}")
+        
+        # Format user-friendly error messages for common cloud restrictions
+        if "bot" in error_message.lower() or "restricted" in error_message.lower() or "login" in error_message.lower():
+            clean_error = "Platform security blocked cloud server access. Please try updating your cookies or use a residential IP."
+        else:
+            clean_error = error_message
             
-        return resp
+        return jsonify({"status": "error", "error": clean_error}), 400
 
-    except InvalidURLError as exc:
-        return jsonify({"error": str(exc)}), 400
-    except Exception as exc:
-        logger.exception("Streaming route failure: %s", exc)
-        return jsonify({"error": "Failed to resolve stream on cloud server."}), 500
-
-
-@main_bp.route("/api/download", methods=["POST"])
-def start_download():
-    payload = request.get_json(silent=True) or {}
-    url = (payload.get("url") or "").strip()
-    height = payload.get("height", 0)
-
+@main_bp.route('/api/stream-download', methods=['GET'])
+def stream_download():
+    """Streams the video file directly to the user or triggers server download."""
     try:
-        job = _get_service().start_download(url, height)
-    except InvalidURLError as exc:
-        return jsonify({"error": str(exc)}), 400
+        url = request.args.get('url')
+        if not url:
+            return jsonify({"error": "Missing URL parameter."}), 400
 
-    return jsonify({"job_id": job.id})
+        service = _get_service()
+        
+        # Execute local download on the server
+        filepath = service.download_video(url)
+        
+        if not filepath or not os.path.exists(filepath):
+            return jsonify({"error": "File extraction failed on cloud storage."}), 500
 
+        # Send file to browser as an attachment
+        return send_file(
+            filepath,
+            as_attachment=True,
+            download_name=os.path.basename(filepath)
+        )
 
-@main_bp.route("/api/status/<job_id>")
-def job_status(job_id):
-    job = job_store.get(job_id)
-    if job is None:
-        return jsonify({"error": "Job not found"}), 404
-    return jsonify(job.to_dict())
-
-
-@main_bp.route("/api/file/<job_id>")
-def get_file(job_id):
-    job = job_store.get(job_id)
-    if job is None:
-        return jsonify({"error": "Job not found"}), 404
-    if job.status != JobStatus.DONE:
-        return jsonify({"error": "File is not ready yet"}), 409
-
-    extension = job.filename.rsplit(".", 1)[-1] if "." in job.filename else "mp4"
-    download_name = f"{job.title or 'video'}.{extension}"
-
-    return send_from_directory(
-        current_app.config["DOWNLOAD_DIR"],
-        job.filename,
-        as_attachment=True,
-        download_name=download_name,
-    )
-
-
-@main_bp.errorhandler(404)
-def not_found(_error):
-    return jsonify({"error": "Resource not found"}), 404
-
-
-@main_bp.errorhandler(500)
-def server_error(error):
-    logger.exception("Unhandled server error")
-    return jsonify({"error": "An unexpected server error occurred"}), 500
+    except Exception as e:
+        error_message = str(e)
+        current_app.logger.error(f"[API Download Error]: {error_message}")
+        return jsonify({"status": "error", "error": f"Download failed: {error_message}"}), 400
