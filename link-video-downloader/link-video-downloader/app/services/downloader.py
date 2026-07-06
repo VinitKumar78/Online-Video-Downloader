@@ -2,83 +2,91 @@ import os
 import yt_dlp
 from typing import Dict, Any, Optional
 
-# Automatically locate cookies.txt in the root directory
+# Locate root directory to find cookies.txt dynamically
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 COOKIES_PATH = os.path.join(ROOT_DIR, 'cookies.txt')
 
 
-def get_base_ydl_opts() -> Dict[str, Any]:
-    """
-    Returns base configuration options for yt-dlp, including anti-bot headers
-    and cookie file injection if available.
-    """
-    opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        'nocheckcertificate': True,
-        'quiet': True,
-        'no_warnings': True,
-        'extract_flat': False,
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Sec-Fetch-Mode': 'navigate',
+class DownloaderService:
+    def __init__(self, output_dir: str = 'downloads'):
+        """
+        Initializes the DownloaderService and ensures the output directory exists.
+        """
+        self.output_dir = os.path.join(ROOT_DIR, output_dir)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir, exist_ok=True)
+
+    def get_base_opts(self) -> Dict[str, Any]:
+        """
+        Returns configuration options for yt-dlp including anti-bot headers
+        and cookie injection for cloud hosting on Render.
+        """
+        opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'nocheckcertificate': True,
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            }
         }
-    }
 
-    # Automatically attach cookies.txt if it exists in your project root
-    if os.path.exists(COOKIES_PATH):
-        opts['cookiefile'] = COOKIES_PATH
-    else:
-        print(f"[Warning] Cookies file not found at: {COOKIES_PATH}. Some platforms may block cloud requests.")
+        # Check working directory or root directory for generated cookies.txt
+        if os.path.exists('cookies.txt'):
+            opts['cookiefile'] = 'cookies.txt'
+        elif os.path.exists(COOKIES_PATH):
+            opts['cookiefile'] = COOKIES_PATH
 
-    return opts
+        return opts
 
+    def extract_info(self, url: str, download: bool = False) -> Dict[str, Any]:
+        """
+        Extracts video metadata and direct streaming links.
+        """
+        opts = self.get_base_opts()
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=download)
+                # Handle playlists or carousel posts by selecting the first item
+                if 'entries' in info and info['entries']:
+                    info = info['entries'][0]
+                return info
+        except yt_dlp.utils.DownloadError as e:
+            raise Exception(f"Failed to resolve stream on cloud server: {str(e)}")
+        except Exception as e:
+            raise Exception(f"An unexpected error occurred during resolution: {str(e)}")
 
-def extract_video_info(url: str) -> Dict[str, Any]:
-    """
-    Extracts video metadata and direct streaming links without downloading the file locally.
-    """
-    opts = get_base_ydl_opts()
-    
-    try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            
-            # Handle playlists or multi-video posts by picking the first entry
-            if 'entries' in info and info['entries']:
-                info = info['entries'][0]
-                
-            return info
-    except yt_dlp.utils.DownloadError as e:
-        raise Exception(f"Failed to resolve stream on cloud server: {str(e)}")
-    except Exception as e:
-        raise Exception(f"An unexpected error occurred while resolving video info: {str(e)}")
+    def get_video_info(self, url: str) -> Dict[str, Any]:
+        """
+        Alias for extract_info without downloading to disk.
+        """
+        return self.extract_info(url, download=False)
 
+    def download_video(self, url: str) -> str:
+        """
+        Downloads the video directly to local server storage and returns the file path.
+        """
+        opts = self.get_base_opts()
+        opts.update({
+            'outtmpl': os.path.join(self.output_dir, '%(id)s_%(title).50s.%(ext)s'),
+        })
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                if 'entries' in info and info['entries']:
+                    info = info['entries'][0]
+                return ydl.prepare_filename(info)
+        except yt_dlp.utils.DownloadError as e:
+            raise Exception(f"Download failed: {str(e)}")
+        except Exception as e:
+            raise Exception(f"System error during download: {str(e)}")
 
-def download_video_file(url: str, output_dir: str = 'downloads') -> str:
-    """
-    Downloads the video directly to the server's local storage and returns the filepath.
-    """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
-
-    opts = get_base_ydl_opts()
-    opts.update({
-        'outtmpl': os.path.join(output_dir, '%(id)s_%(title).50s.%(ext)s'),
-        # Fallback to single format if ffmpeg is missing on Render
-        'format': 'best[ext=mp4]/bestvideo+bestaudio/best',
-    })
-
-    try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if 'entries' in info and info['entries']:
-                info = info['entries'][0]
-                
-            filepath = ydl.prepare_filename(info)
-            return filepath
-    except yt_dlp.utils.DownloadError as e:
-        raise Exception(f"Download failed: {str(e)}")
-    except Exception as e:
-        raise Exception(f"System error during download: {str(e)}")
+    def download(self, url: str) -> str:
+        """
+        Alias for download_video.
+        """
+        return self.download_video(url)
