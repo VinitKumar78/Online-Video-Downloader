@@ -43,7 +43,7 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         resultUploader.innerText = data.uploader || "Direct Download Link";
         
         downloadBtn.onclick = async () => {
-            // CLIENT-SIDE CLOUD REDIRECTION BYPASS HOOK
+            // CLIENT-SIDE CLOUD REDIRECTION BYPASS HOOK (FOR YOUTUBE & INSTAGRAM ON RENDER)
             if (data.is_cloud_platform === true) {
                 downloadBtn.innerText = "Streaming Video Asset Directly...";
                 downloadBtn.disabled = true;
@@ -70,15 +70,14 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
                             const finalStreamUrl = cdnData.url;
                             
                             if (finalStreamUrl) {
-                                // Inject hidden sandboxed iframe to trigger user's native home browser context download
-                                let hiddenFrame = document.getElementById('silent-download-frame');
-                                if (!hiddenFrame) {
-                                    hiddenFrame = document.createElement('iframe');
-                                    hiddenFrame.id = 'silent-download-frame';
-                                    hiddenFrame.style.display = 'none';
-                                    document.body.appendChild(hiddenFrame);
-                                }
-                                hiddenFrame.src = finalStreamUrl;
+                                // Trigger a clean, direct download popup without ever opening a new window/tab
+                                const downloadAnchor = document.createElement('a');
+                                downloadAnchor.href = finalStreamUrl;
+                                downloadAnchor.setAttribute('download', '');
+                                document.body.appendChild(downloadAnchor);
+                                downloadAnchor.click();
+                                document.body.removeChild(downloadAnchor);
+                                
                                 downloadTriggered = true;
                                 break;
                             }
@@ -88,15 +87,17 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
                     }
                 }
 
-                if (!downloadTriggered) {
-                    // Fallback to direct anchor window if tracking layers fail
-                    window.open(`https://co.wuk.sh/?url=${encodeURIComponent(url)}`, '_blank');
+                if (downloadTriggered) {
+                    downloadBtn.innerText = "Download Started!";
+                } else {
+                    downloadBtn.innerText = "Error: Stream nodes busy. Retrying...";
+                    alert("All background extraction endpoints are temporarily rate-limited. Please wait a minute and click download again.");
                 }
 
                 setTimeout(() => {
                     downloadBtn.disabled = false;
                     downloadBtn.innerText = "Start Secure Download";
-                }, 3000);
+                }, 4000);
 
             } else {
                 // Keep default localized server-side caching if processing on home network loop
