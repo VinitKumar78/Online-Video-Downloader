@@ -42,87 +42,17 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         resultTitle.innerText = data.title || "Target File Container";
         resultUploader.innerText = data.uploader || "Direct Download Link";
         
-        downloadBtn.onclick = async () => {
-            // TRIGGER CLOUD BYPASS STREAM NATIVELY
-            if (data.is_cloud_platform === true) {
-                downloadBtn.innerText = "Initiating Browser Download...";
-                downloadBtn.disabled = true;
-
-                const publicBypassApis = [
-                    "https://api.cobalt.tools/api/json",
-                    "https://co.wuk.sh/api/json",
-                    "https://cobalt.api.v0.pw/api/json"
-                ];
-
-                let downloadTriggered = false;
-
-                for (const baseApi of publicBypassApis) {
-                    try {
-                        const payload = { 
-                            url: url, 
-                            videoQuality: "720",
-                            filenamePattern: "classic" 
-                        };
-                        
-                        const cdnResponse = await fetch(baseApi, {
-                            method: "POST",
-                            headers: { 
-                                "Accept": "application/json", 
-                                "Content-Type": "application/json" 
-                            },
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (cdnResponse.ok) {
-                            const cdnData = await cdnResponse.json();
-                            if (cdnData.url) {
-                                // Forces a direct download in the current window seamlessly
-                                window.location.href = cdnData.url;
-                                downloadTriggered = true;
-                                break;
-                            }
-                        }
-                    } catch (err) {
-                        console.warn("Rotating to backup stream node...");
-                    }
-                }
-
-                if (downloadTriggered) {
-                    setTimeout(() => {
-                        downloadBtn.disabled = false;
-                        downloadBtn.innerText = "Start Secure Download";
-                    }, 3000);
-                } else {
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerText = "Start Secure Download";
-                    alert("All stream networks are currently busy. Please try again in a few moments.");
-                }
-
-            } else {
-                // LOCALIZED SERVER-SIDE WORKER TRIGGER
-                downloadBtn.disabled = true;
-                downloadBtn.innerText = "Initializing Download Job...";
-                
-                try {
-                    const dlResponse = await fetch('/api/download', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: url, height: 0 })
-                    });
-                    const dlData = await dlResponse.json();
-                    
-                    if (dlData.job_id) {
-                        downloadBtn.innerText = "Downloading Background File Stream...";
-                        checkDownloadStatus(dlData.job_id, downloadBtn);
-                    } else {
-                        throw new Error(dlData.error || "Could not spin up download worker thread.");
-                    }
-                } catch (dlErr) {
-                    alert(dlErr.message);
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerText = "Start Secure Download";
-                }
-            }
+        downloadBtn.onclick = () => {
+            downloadBtn.disabled = true;
+            downloadBtn.innerText = "Initiating Browser Download...";
+            
+            // Route directly to our backend stream handler which pipes data straight into the browser tray
+            window.location.href = `/api/stream-download?url=${encodeURIComponent(url)}`;
+            
+            setTimeout(() => {
+                downloadBtn.disabled = false;
+                downloadBtn.innerText = "Start Secure Download";
+            }, 3000);
         };
 
         resultCard.classList.remove('hidden');
@@ -136,42 +66,3 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         fetchBtn.innerText = "Fetch Video";
     }
 });
-
-async function checkDownloadStatus(jobId, actionButton) {
-    const interval = setInterval(async () => {
-        try {
-            const res = await fetch(`/api/status/${jobId}`);
-            const statusData = await res.json();
-            
-            let rawStatus = "";
-            if (statusData.status) {
-                rawStatus = (typeof statusData.status === 'object' && statusData.status.name)
-                    ? String(statusData.status.name).toUpperCase()
-                    : String(statusData.status).toUpperCase();
-            }
-
-            if (rawStatus === 'DONE' || rawStatus === 'COMPLETED' || statusData.progress === '100%') {
-                clearInterval(interval);
-                actionButton.innerText = "File Ready! Initializing Download...";
-                
-                window.location.href = `/api/file/${jobId}`;
-                
-                setTimeout(() => {
-                    actionButton.disabled = false;
-                    actionButton.innerText = "Start Secure Download";
-                }, 3000);
-            } else if (rawStatus === 'ERROR' || rawStatus === 'FAILED') {
-                clearInterval(interval);
-                alert("Download Job Failure: " + (statusData.error || "Unknown system stream error"));
-                actionButton.disabled = false;
-                actionButton.innerText = "Start Secure Download";
-            } else if (statusData.progress) {
-                actionButton.innerText = `Downloading: ${statusData.progress}`;
-            } else {
-                actionButton.innerText = "Downloading: Streaming...";
-            }
-        } catch (err) {
-            console.error("Status check loop tracing failed:", err);
-        }
-    }, 1500);
-}
