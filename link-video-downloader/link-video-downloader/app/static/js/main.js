@@ -43,93 +43,27 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         resultUploader.innerText = data.uploader || "Direct Download Link";
         
         downloadBtn.onclick = async () => {
-            // BACKEND CLOUD PLATFORM BYPASS HOOK
-            if (data.is_cloud_platform === true) {
-                downloadBtn.innerText = "Streaming Asset Natively...";
-                downloadBtn.disabled = true;
-
-                // Restructured and expanded fallback distribution cluster using up-to-date syntax parameters
-                const publicBypassApis = [
-                    "https://api.cobalt.tools/api/json",
-                    "https://co.wuk.sh/api/json",
-                    "https://cobalt.api.v0.pw/api/json"
-                ];
-
-                let downloadTriggered = false;
-
-                for (const baseApi of publicBypassApis) {
-                    try {
-                        // Aligned with standard V7 api schema properties (videoQuality instead of vQuality)
-                        const payload = { 
-                            url: url, 
-                            videoQuality: "720",
-                            downloadMode: "auto"
-                        };
-                        
-                        const cdnResponse = await fetch(baseApi, {
-                            method: "POST",
-                            headers: { "Accept": "application/json", "Content-Type": "application/json" },
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (cdnResponse.ok) {
-                            const cdnData = await cdnResponse.json();
-                            const finalStreamUrl = cdnData.url;
-                            
-                            if (finalStreamUrl) {
-                                const downloadAnchor = document.createElement('a');
-                                downloadAnchor.href = finalStreamUrl;
-                                downloadAnchor.setAttribute('download', '');
-                                document.body.appendChild(downloadAnchor);
-                                downloadAnchor.click();
-                                document.body.removeChild(downloadAnchor);
-                                
-                                downloadTriggered = true;
-                                break;
-                            }
-                        }
-                    } catch (err) {
-                        console.warn(`Fallback route rotated safely for instance node.`);
-                    }
-                }
-
-                if (downloadTriggered) {
-                    downloadBtn.innerText = "Download Started!";
-                } else {
-                    // SECURE ULTRA FALLBACK: If public APIs are completely rate-limited, extract video stream instantly via web gate
-                    downloadBtn.innerText = "Redirecting to Direct Stream...";
-                    window.open(`https://cobalt.tools/?url=${encodeURIComponent(url)}`, '_blank');
-                }
-
-                setTimeout(() => {
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerText = "Start Secure Download";
-                }, 4000);
-
-            } else {
-                // Default native local server pipeline worker thread processing
-                downloadBtn.disabled = true;
-                downloadBtn.innerText = "Initializing Download Job...";
+            downloadBtn.disabled = true;
+            downloadBtn.innerText = "Initializing Download Job...";
+            
+            try {
+                const dlResponse = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url, height: 0 })
+                });
+                const dlData = await dlResponse.json();
                 
-                try {
-                    const dlResponse = await fetch('/api/download', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: url, height: 0 })
-                    });
-                    const dlData = await dlResponse.json();
-                    
-                    if (dlData.job_id) {
-                        downloadBtn.innerText = "Downloading Background File Stream...";
-                        checkDownloadStatus(dlData.job_id, downloadBtn);
-                    } else {
-                        throw new Error(dlData.error || "Could not spin up download worker thread.");
-                    }
-                } catch (dlErr) {
-                    alert(dlErr.message);
-                    downloadBtn.disabled = false;
-                    downloadBtn.innerText = "Start Secure Download";
+                if (dlData.job_id) {
+                    downloadBtn.innerText = "Downloading Background File Stream...";
+                    checkDownloadStatus(dlData.job_id, downloadBtn);
+                } else {
+                    throw new Error(dlData.error || "Could not spin up download worker thread.");
                 }
+            } catch (dlErr) {
+                alert(dlErr.message);
+                downloadBtn.disabled = false;
+                downloadBtn.innerText = "Start Secure Download";
             }
         };
 
@@ -161,7 +95,10 @@ async function checkDownloadStatus(jobId, actionButton) {
             if (rawStatus === 'DONE' || rawStatus === 'COMPLETED' || statusData.progress === '100%') {
                 clearInterval(interval);
                 actionButton.innerText = "File Ready! Initializing Download...";
+                
+                // Triggers native browser download directly without opening any external tab
                 window.location.href = `/api/file/${jobId}`;
+                
                 setTimeout(() => {
                     actionButton.disabled = false;
                     actionButton.innerText = "Start Secure Download";
