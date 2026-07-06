@@ -43,11 +43,12 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         resultUploader.innerText = data.uploader || "Direct Download Link";
         
         downloadBtn.onclick = async () => {
-            // CLIENT-SIDE CLOUD REDIRECTION BYPASS HOOK (FOR YOUTUBE & INSTAGRAM ON RENDER)
+            // BACKEND CLOUD PLATFORM BYPASS HOOK
             if (data.is_cloud_platform === true) {
-                downloadBtn.innerText = "Streaming Video Asset Directly...";
+                downloadBtn.innerText = "Streaming Asset Natively...";
                 downloadBtn.disabled = true;
 
+                // Restructured and expanded fallback distribution cluster using up-to-date syntax parameters
                 const publicBypassApis = [
                     "https://api.cobalt.tools/api/json",
                     "https://co.wuk.sh/api/json",
@@ -58,7 +59,13 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
 
                 for (const baseApi of publicBypassApis) {
                     try {
-                        const payload = { url: url, vQuality: "720" };
+                        // Aligned with standard V7 api schema properties (videoQuality instead of vQuality)
+                        const payload = { 
+                            url: url, 
+                            videoQuality: "720",
+                            downloadMode: "auto"
+                        };
+                        
                         const cdnResponse = await fetch(baseApi, {
                             method: "POST",
                             headers: { "Accept": "application/json", "Content-Type": "application/json" },
@@ -70,7 +77,6 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
                             const finalStreamUrl = cdnData.url;
                             
                             if (finalStreamUrl) {
-                                // Trigger a clean, direct download popup without ever opening a new window/tab
                                 const downloadAnchor = document.createElement('a');
                                 downloadAnchor.href = finalStreamUrl;
                                 downloadAnchor.setAttribute('download', '');
@@ -83,15 +89,16 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
                             }
                         }
                     } catch (err) {
-                        console.warn(`Fallback stream path shifted for segment: ${baseApi}`);
+                        console.warn(`Fallback route rotated safely for instance node.`);
                     }
                 }
 
                 if (downloadTriggered) {
                     downloadBtn.innerText = "Download Started!";
                 } else {
-                    downloadBtn.innerText = "Error: Stream nodes busy. Retrying...";
-                    alert("All background extraction endpoints are temporarily rate-limited. Please wait a minute and click download again.");
+                    // SECURE ULTRA FALLBACK: If public APIs are completely rate-limited, extract video stream instantly via web gate
+                    downloadBtn.innerText = "Redirecting to Direct Stream...";
+                    window.open(`https://cobalt.tools/?url=${encodeURIComponent(url)}`, '_blank');
                 }
 
                 setTimeout(() => {
@@ -100,7 +107,7 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
                 }, 4000);
 
             } else {
-                // Keep default localized server-side caching if processing on home network loop
+                // Default native local server pipeline worker thread processing
                 downloadBtn.disabled = true;
                 downloadBtn.innerText = "Initializing Download Job...";
                 
