@@ -43,27 +43,85 @@ document.getElementById('download-form').addEventListener('submit', async (e) =>
         resultUploader.innerText = data.uploader || "Direct Download Link";
         
         downloadBtn.onclick = async () => {
-            downloadBtn.disabled = true;
-            downloadBtn.innerText = "Initializing Download Job...";
-            
-            try {
-                const dlResponse = await fetch('/api/download', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url, height: 0 })
-                });
-                const dlData = await dlResponse.json();
-                
-                if (dlData.job_id) {
-                    downloadBtn.innerText = "Downloading Background File Stream...";
-                    checkDownloadStatus(dlData.job_id, downloadBtn);
-                } else {
-                    throw new Error(dlData.error || "Could not spin up download worker thread.");
+            // TRIGGER CLOUD BYPASS STREAM NATIVELY
+            if (data.is_cloud_platform === true) {
+                downloadBtn.innerText = "Initiating Browser Download...";
+                downloadBtn.disabled = true;
+
+                const publicBypassApis = [
+                    "https://api.cobalt.tools/api/json",
+                    "https://co.wuk.sh/api/json",
+                    "https://cobalt.api.v0.pw/api/json"
+                ];
+
+                let downloadTriggered = false;
+
+                for (const baseApi of publicBypassApis) {
+                    try {
+                        const payload = { 
+                            url: url, 
+                            videoQuality: "720",
+                            filenamePattern: "classic" 
+                        };
+                        
+                        const cdnResponse = await fetch(baseApi, {
+                            method: "POST",
+                            headers: { 
+                                "Accept": "application/json", 
+                                "Content-Type": "application/json" 
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (cdnResponse.ok) {
+                            const cdnData = await cdnResponse.json();
+                            if (cdnData.url) {
+                                // Forces a direct download in the current window seamlessly
+                                window.location.href = cdnData.url;
+                                downloadTriggered = true;
+                                break;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("Rotating to backup stream node...");
+                    }
                 }
-            } catch (dlErr) {
-                alert(dlErr.message);
-                downloadBtn.disabled = false;
-                downloadBtn.innerText = "Start Secure Download";
+
+                if (downloadTriggered) {
+                    setTimeout(() => {
+                        downloadBtn.disabled = false;
+                        downloadBtn.innerText = "Start Secure Download";
+                    }, 3000);
+                } else {
+                    downloadBtn.disabled = false;
+                    downloadBtn.innerText = "Start Secure Download";
+                    alert("All stream networks are currently busy. Please try again in a few moments.");
+                }
+
+            } else {
+                // LOCALIZED SERVER-SIDE WORKER TRIGGER
+                downloadBtn.disabled = true;
+                downloadBtn.innerText = "Initializing Download Job...";
+                
+                try {
+                    const dlResponse = await fetch('/api/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: url, height: 0 })
+                    });
+                    const dlData = await dlResponse.json();
+                    
+                    if (dlData.job_id) {
+                        downloadBtn.innerText = "Downloading Background File Stream...";
+                        checkDownloadStatus(dlData.job_id, downloadBtn);
+                    } else {
+                        throw new Error(dlData.error || "Could not spin up download worker thread.");
+                    }
+                } catch (dlErr) {
+                    alert(dlErr.message);
+                    downloadBtn.disabled = false;
+                    downloadBtn.innerText = "Start Secure Download";
+                }
             }
         };
 
@@ -96,7 +154,6 @@ async function checkDownloadStatus(jobId, actionButton) {
                 clearInterval(interval);
                 actionButton.innerText = "File Ready! Initializing Download...";
                 
-                // Triggers native browser download directly without opening any external tab
                 window.location.href = `/api/file/${jobId}`;
                 
                 setTimeout(() => {
