@@ -18,13 +18,12 @@ class DownloaderService:
     ):
         """Initializes the DownloaderService and accepts all Flask app config settings.
 
-        **kwargs guarantees that unexpected parameters from routes.py won't
-        throw TypeErrors.
+        **kwargs guarantees that unexpected parameters from routes.py won't throw TypeErrors.
         """
         dir_path = download_dir or output_dir or 'downloads'
         self.output_dir = os.path.join(ROOT_DIR, dir_path)
         if not os.path.exists(self.output_dir):
-          os.makedirs(self.output_dir, exist_ok=True)
+            os.makedirs(self.output_dir, exist_ok=True)
 
         self.output_format = output_format or '%(id)s_%(title).50s.%(ext)s'
         self.max_filename_length = max_filename_length or 200
@@ -32,7 +31,8 @@ class DownloaderService:
     def get_base_opts(self) -> Dict[str, Any]:
         """Returns hardened configuration options for yt-dlp.
 
-        Configured with mobile client emulation to bypass cloud IP bot blocks.
+        Configured with multi-client emulation (Embedded TV, Creator, Safari)
+        to bypass cloud IP bot blocks.
         """
         opts = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
@@ -51,11 +51,12 @@ class DownloaderService:
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Sec-Fetch-Mode': 'navigate',
             },
-            # HARDENED CLIENT CONFIGURATION: Forces yt-dlp to rely strictly on native mobile application signatures
+            # AGGRESSIVE BYPASS: Employs Embedded TV, Android Creator, and Web Safari endpoints
+            # These specific client endpoints apply significantly lighter IP blocklists in cloud datacenters
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android', 'mweb'],
-                    'player_skip': ['webpage', 'configs'],
+                    'player_client': ['tvembedded', 'android_creator', 'ios', 'android', 'web_safari'],
+                    'player_skip': ['webpage', 'configs', 'js'],
                 }
             },
         }
@@ -69,13 +70,12 @@ class DownloaderService:
         ]
 
         for path in possible_cookie_paths:
-          if os.path.exists(path) and os.path.getsize(path) > 0:
-            opts['cookiefile'] = path
-            print(
-                f'🔒 [DownloaderService] Successfully attached cookies'
-                f' from: {path}'
-            )
-            break
+            if os.path.exists(path) and os.path.getsize(path) > 0:
+                opts['cookiefile'] = path
+                print(
+                    f'🔒 [DownloaderService] Successfully attached cookies from: {path}'
+                )
+                break
 
         return opts
 
@@ -88,21 +88,20 @@ class DownloaderService:
         """
         opts = self.get_base_opts()
         try:
-          with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=download)
-            if 'entries' in info and info['entries']:
-              info = info['entries'][0]
-            return info
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=download)
+                if 'entries' in info and info['entries']:
+                    info = info['entries'][0]
+                return info
         except yt_dlp.utils.DownloadError as e:
-          error_msg = str(e)
-          if 'Sign in to confirm' in error_msg:
-            raise Exception(
-                'Cloud server access restricted by platform anti-bot'
-                ' protection. Please ensure valid cookies are supplied.'
-            )
-          raise Exception(f'Video extraction failed: {error_msg}')
+            error_msg = str(e)
+            if 'Sign in to confirm' in error_msg:
+                raise Exception(
+                    'Cloud server access restricted by platform anti-bot protection. Please ensure valid cookies are supplied.'
+                )
+            raise Exception(f'Video extraction failed: {error_msg}')
         except Exception as e:
-          raise Exception(f'Unexpected resolution error: {str(e)}')
+            raise Exception(f'Unexpected resolution error: {str(e)}')
 
     # =========================================================================
     # EXHAUSTIVE ROUTE ALIASES (Guarantees zero AttributeError crashes in routes)
@@ -137,15 +136,15 @@ class DownloaderService:
             'trim_file_name': self.max_filename_length,
         })
         try:
-          with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if 'entries' in info and info['entries']:
-              info = info['entries'][0]
-            return ydl.prepare_filename(info)
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                if 'entries' in info and info['entries']:
+                    info = info['entries'][0]
+                return ydl.prepare_filename(info)
         except yt_dlp.utils.DownloadError as e:
-          raise Exception(f'Download execution failed: {str(e)}')
+            raise Exception(f'Download execution failed: {str(e)}')
         except Exception as e:
-          raise Exception(f'System storage error during download: {str(e)}')
+            raise Exception(f'System storage error during download: {str(e)}')
 
     def download(self, url: str, **kwargs) -> str:
         """Alias for download_video."""
